@@ -54,21 +54,39 @@ Finally, we note that in order for there to be less than 1 statistical false det
 
 \section{Introduction}
 
-{\bf TODO}
+Real--time, wide--field surveys have rapidly become one of the main pillars of time--domain astronomy.
+Multiple projects that are on--going or planned will generate terabyte to petabyte--sized databases, with their core mission statements to enable the understanding of the Universe through the study of its variability.
+A real--time analysis component is critical to the success of many of these surveys, as this allows rapid recognition and followup of rare events that are only detectable due to the massive volumes of data acquired.
+However, the management of this data -- the automated processing, storage, and retrieval of it -- poses significant challenges, as the data volumes scale exponentially from one survey to the next.
+Significant investments in software and algorithms are the only way to meet these challenges head--on.
+For example, the Large Synoptic Survey Telescope (LSST), which was approved for construction in the Fall of 2014, has had an active Data Management group working continuously since 2004 to refine exiting algorithms and to develop new ones, to meet the challenge of first engineering light in 2020.
+We report here on one of these software development projects: the study of image subtraction software for the detection of variability in astronomical images.
 
-Image subtraction as a solution to general crowded--field variability detection.
+The detection of transient objects or known--object variability in uncrowded fields may be undertaken at the catalog level \cite{drake}.
+However, when searching for variability in regions where there is significant confusion, catalog--based methods become heavily dependent on how the complex objects are deblended, which itself is typically a function of the image resolution (or seeing).
+For this reason, image subtraction techniques have been developed that perform the subtraction of a prior imaging epoch from a newly acquired one, subtracting out all static sources and only leaving signatures of objects that have changed in position or brightness in a ``difference image''.
+By reducing the number of objects to measure, these variable sources may be uniquely photometered without significant deblending issues \citep[crowded--field difference images are indeed possible and present their own challenges, e.g.][]{m31}.
+This technique is a necessity for the study of variability in the Galactic bulge \citep[e.g. microlensing;][]{microlensing}, nearby galaxies \citep[e.g. nearby supernovae;][]{nearby-sne}, or for the study of nuclear variability in more distant galaxies \cite[e.g.][]{yumi}.
+Image subtraction is typically applied to the entirety of time--domain datasets, in both sparse and crowded fields, so as to have a consistent treatment of all of the data.
 
-PSF-matching as a means to image subtraction.
+It is both an opportunity and a challenge that image subtraction reveals everything that has varied between two images, since that also includes the atmosphere, the telescope pointing, the temperature of the detectors, and the condition of the detectors themselves.
+This dependency makes it absolutely necessary to calibrate the science pixels, a requirement that becomes more stringent as data volumes become larger and rare effects become commonplace.
+Assuming that the instrumental effects are understood, the core challenge to image subtraction is to match the point--spread--functions (PSFs) of the two images being compared.
+There are multiple ways to perform PSF--matching, and techniques that operate in the spatial domain \citep{alard-lupton,alard} have largely been preferred over techniques that operate in the Fourier domain \citep{tomaney-crotts}.
+The application of algorithms to the images may also cause artificial systematic sources of variability, including misapplication of the image subtraction software itself.
+This is clearly a circumstance to be avoided, and the motivation behind this work.
 
-Sources of false detections (in binary classification these would be naturally referred to as ``false positives''.  However, since ``positive'' also may refer to the polarity of a difference image detection, and we indeed accept both positive--going and negative--going detections as ``false positives'', we choose to use the term ``false detections'' here to refer to these sources).
+A key recognition of recent surveys is that systematic effects (i.e. non--astrophysical variability) dominate the population of objects found in difference images \citep{sdss2,panstarrs}.
+This has opened the door for the adoption of machine--learning (ML) techniques to separate the true transients from the false detections\footnote{In binary classification, sources of contamination are referred to as ``false positives''.  However, since ``positive'' also may refer to the polarity of a difference image detection, and we indeed accept both positive--going and negative--going detections as ``false positives'', we use the term ``false detections'' here to refer to these sources.}\citep{josh}.
+This work is encouraging, with the most recent ML suites having XXX completeness with YYY contamination.
+However, for LSST this level of judgment must be improved, with the SRD requiring XXX and YYY for the nightly real--time alert stream.
+A necessary step towards achieving this goal is to understand the sources of false detections in images, and to develop new techniques to avoid generating or reporting them.
+We describe such a novel algorithm here, which involves regularizing the PSF--matching operation by smoothing the science image with its own PSF.
+As we will demonstrate, this is not an arbitrary decision, but merely re--orders an operation that already occurs naturally in the process of difference image source detection.
+By moving this operation earlier in the pipeline in a manner that commutes with the standard techniques, we introduce no new pixel--level operations into the processing, and simultaneously reduce our sensitivity to systematics effects due to ``sharpening'', or deconvolution, during PSF--matching.
 
-Machine learning as a way to address false positive rate.
-
-LSST.
-
-Alert stream.
-
-Mention that one paper that talks about pre--filtering but not for this reason.
+% WHAT THE HELL IS THIS PAPER?!
+% Mention that one paper that talks about pre--filtering but not for this reason.
 
 \section{PSF--Matching Algorithm}
 
