@@ -33,20 +33,20 @@ We then match a reference image to this smoothed image, effectively resulting in
 %The process of detection and measurement happens directly on this difference image.
 By smoothing the input image, we reduce the number of conditions under which the reference image has to be sharpened to match the input image, which is a significant source of systematic false detections.
 We compared this pre--filtering technique with the traditional (post--filtering) image subtraction approach using a suite of high--fidelity simulated images from the Large Synoptic Survey Telescope (LSST) PhoSim effort.
-We used a configuration environment to tune each pipeline, using an objective function that minimizes the mean--square residuals in a control sample of sources in the images.
+We used a configuration environment to tune each pipeline, using an objective function that represents the mean--square residuals in a control sample of sources in the images.
 We then ran a suite of images through image subtraction and source detection and measurement, using a simulated deep template image and three simulated science images that differ primarily in seeing.
-Situations that lead to a deconvolution of the template image are shown to have a lower sensitivity to true variability, and higher incidence of false detections, due to enhancement of the image noise.
+Situations that led to a deconvolution of the template image had a lower sensitivity to true variability, and higher incidence of false detections, due to enhancement of the image noise.
 In this regard, using the pre--filtering technique is clearly preferred.
 Under smoothing of the template image, we find that the quality of the difference image pixels is very similar under the two approaches.
 However, the propagated per--pixel variance varies significantly at the detection stage, leading to differences in the rate of false detections.
 We find a single--parameter correction to the effective detection threshold that brings the run of false detections with detection threshold in--line with theoretical expectations.
 We examined several sources for this discrepancy.
-An over or under--estimate of the background is shown to bias the ratio of positive--going to negative--going false detections, but does not significantly effect the total numbers.
-However, a misunderstanding of the image noise is shown to significantly impact the overall false detection rate.
+An over or under--estimate of the background is shown to bias the ratio of positive--going to negative--going false detections, but does not significantly affect the total numbers.
+However, misestimates of the image noise are shown to significantly impact the overall false detection rate.
 We find that even a 2\% misestimate of the noise may change the false detection rate by a factor of 1.5--2 at the 5--sigma detection threshold.
 Under both pipelines, the propagated variance in the resulting difference images is within 1\% of the empirical variance.
 However, with when post--filtering the difference images for detection, the variance is underestimated by 4--5\% (when not deconvolving), leading to an increase in the rate of false detections.
-This suggests that the multiple integral transforms being applied to images lead to significant misestimation of the variance, as the pixels become correlated and current algorithms do not track the pixel covariance during these operations.
+This suggests that the multiple integral transforms being applied to images lead to significant misestimation of the variance, as the pixels become correlated and current algorithms do not track the pixel covariance.
 Finally, we note that in order for there to be less than 1 statistical false detection per LSST difference image, the detection pipeline must operate at a threshold of 5.5--sigma under median (0.6'') seeing conditions.
 
 \end{abstract}
@@ -55,34 +55,34 @@ Finally, we note that in order for there to be less than 1 statistical false det
 \section{Introduction}
 
 Real--time, wide--field surveys have rapidly become one of the main pillars of time--domain astronomy.
-Multiple projects that are on--going or planned will generate terabyte to petabyte--sized databases, with their core mission statements to enable an understanding of the Universe through the study of its variability.
+Multiple projects that are on--going or planned will generate terabyte to petabyte--sized databases, with core objectives that include an understanding of the Universe through the study of its variability.
 A real--time analysis component is critical to the success of many of these surveys, as this allows rapid recognition and followup of rare events that are only detectable due to the massive volumes of data acquired.
 However, the management of this data -- the automated acquisition, processing, storage, and retrieval of it -- poses its own challenges, as the data volumes scale exponentially from one survey to the next.
 Significant investments in software and algorithms are the only way to meet these challenges head--on.
-For example, the Large Synoptic Survey Telescope (LSST), which was approved for construction in the Fall of 2014, has had an active Data Management group working continuously since 2004 to refine exiting algorithms and to develop new ones, to meet the challenge of first engineering light in 2020.
+For this reason, the Large Synoptic Survey Telescope (LSST), which was approved for construction in the Fall of 2014, has had an active Data Management group working continuously since 2004 to refine exiting algorithms and to develop new ones, to meet the challenge of engineering first light in 2020.
 We report here on one of these software development projects: the study of image subtraction software for the detection of variability in astronomical images.
 
 The detection of transient objects or known--object variability in uncrowded fields may be undertaken at the catalog level \cite{drake}.
-However, when searching for variability in regions where there is significant confusion, catalog--based methods become heavily dependent on how the complex objects are deblended, which itself is typically a function of the image resolution (or seeing).
+However, when searching for variability in regions where there is significant confusion, catalog--based methods become heavily dependent on how objects are deblended, which itself is typically a function of the image resolution (or seeing).
 For this reason, image subtraction techniques have been developed that perform the subtraction of a prior imaging epoch from a newly acquired one, subtracting out all static sources and only leaving signatures of objects that have changed in position or brightness in a ``difference image''.
-By reducing the number of objects to measure, these variable sources may be uniquely photometered without significant deblending issues \citep[however, crowded difference images with spatialy overlapping variable sources are possible, e.g.][]{m31}.
+By reducing the number of objects to measure, these variable sources may be uniquely photometered without significant deblending issues \citep[however, crowded difference images with spatially overlapping variable sources are possible, e.g.][]{m31}.
 This technique is highly advantageous for the study of variability in the Galactic bulge \citep[e.g. microlensing;][]{microlensing}, nearby galaxies \citep[e.g. nearby supernovae;][]{nearby-sne}, or for the study of nuclear variability in more distant galaxies \cite[e.g.][]{yumi}.
 When used, image subtraction is typically applied to the entirety a time--domain dataset, in both sparse and crowded fields, so as to have a consistent treatment of all of the data.
 
 It is both an opportunity and a challenge that image subtraction reveals everything that has varied between two images, since that also includes the atmosphere, the telescope pointing, the temperature of the detectors, and the condition of the detectors themselves.
 This dependency makes it absolutely necessary to calibrate the science pixels, a requirement that becomes more stringent as data volumes become larger and rare effects become commonplace.
 Assuming that the instrumental effects are understood, the core challenge to image subtraction is to match the point--spread--functions (PSFs) of the two images being compared.
-There are multiple ways to perform PSF--matching, and techniques that operate in the spatial domain \citep{alard-lupton,alard} have largely been preferred over techniques that operate in the Fourier domain \citep{tomaney-crotts}.
+There are multiple ways to perform PSF--matching, but techniques that operate in the spatial domain \citep{alard-lupton,alard} have largely been preferred over techniques that operate in the Fourier domain \citep{tomaney-crotts}.
 The application of algorithms to the images may also cause artificial systematic sources of variability, including misapplication of the image subtraction software itself.
 This is clearly a circumstance to be avoided, and the motivation behind this work.
 
 A key recognition of recent surveys is that systematic effects (i.e. non--astrophysical variability) dominate the population of objects found in difference images \citep{sdss2,panstarrs}.
-This has opened the door for the adoption of machine--learning (ML) techniques to separate the true transients from the false detections\footnote{In binary classification, sources of contamination are referred to as ``false positives''.  However, since ``positive'' also may refer to the polarity of a difference image detection, and we indeed accept both positive--going and negative--going detections as ``false positives'', we use the term ``false detections'' here to refer to these sources.}\citep{josh}.
-This work is encouraging, with the most recent ML suites having XXX completeness with YYY contamination.
-However, for LSST this level of judgment must be improved, with the SRD requiring XXX and YYY for the nightly real--time alert stream.
+This has opened the door for the at--scale adoption of machine--learning (ML) techniques to separate the true transients from the false detections\footnote{In binary classification, sources of contamination are referred to as ``false positives''.  However, since ``positive'' also may refer to the polarity of a difference image detection, and we indeed accept both positive--going and negative--going detections as ``false positives'', we use the term ``false detections'' here to refer to these sources.}\citep{josh}.
+This work is encouraging, with the most recent ML suites having XXX completeness with YYY contamination \citep{ml}.
+However, for LSST this level of judgment must be improved, to meet the requirements of XXX and YYY for the nightly real--time alert stream \citep{srd}.
 A necessary step towards achieving this goal is to understand the sources of false detections in images, and to develop new techniques to avoid generating or reporting them.
 We describe such a novel algorithm here, which involves regularizing the PSF--matching operation by smoothing the science image with its own PSF.
-As we will demonstrate, this is not an arbitrary decision, but merely re--orders an operation that already occurs naturally in the process of difference image source detection.
+As we will demonstrate, this is not an arbitrary decision, but merely re--orders an operation that occurs naturally in the process of difference image source detection.
 By moving this operation earlier in the pipeline in a manner that commutes with the standard technique, we introduce no new pixel--level operations into the processing, while simultaneously reducing our sensitivity to systematic effects due to ``sharpening'', or deconvolution, during PSF--matching.
 
 % WHAT THE HELL IS THIS PAPER?!
@@ -92,10 +92,10 @@ By moving this operation earlier in the pipeline in a manner that commutes with 
 
 Image subtraction proceeds by assuming that science image $S(x,y)$ can be modeled as a convolution of a reference template image $T(x,y)$ by a PSF--matching kernel $K(u,v;x,y)$ (indices $u,v$ indicate that the kernel itself is a 2--dimensional function, which varies as a function of position $x,y$ in the image.
 During convolution and correlation there is an implicit summation over $u,v$).
-The two images will have different point--spread--functions (PSFs), which are the time--averaged transfer functions of a point source through the Earth's atmosphere, telescope optics, and into the silicon of the detector before being read out.
-The essence of image subtraction is to match the PSFs of these two images using a $K(u,v;x,y)$ so that they may be subtracted pixel by pixel.
+The two images will have different point--spread--functions, which are the time--averaged transfer functions of a point source through the Earth's atmosphere, telescope optics, and into the silicon of the detector before being read out.
+The essence of image subtraction is to match the PSFs of these two images by fitting for a $K(u,v;x,y)$, so that they may be subtracted pixel by pixel.
 
-In practice, it is assumed that the PSF--matching kernel may be decomposed using a set of basis functions $K(u,v) = \sum_i a_i K_i(u,v)$, where the coefficients in front of each basis are determined through:
+In practice, it is commonly assumed that the PSF--matching kernel may be decomposed using a set of basis functions $K(u,v) = \sum_i a_i K_i(u,v)$, where the coefficients in front of each basis are determined through:
 \begin{eqnarray}
 \label{eq-soln}
 C_i & \equiv & (K_i \otimes T) \\ 
@@ -108,17 +108,18 @@ The solution for $K(u,v)$ is determined by solving for each coefficient $a_i$, w
 
 Point--spread--functions typically have spatial variation across an image due to high--order optical distortions and structure in the perturbing atmosphere; hence the PSF--matching kernel must also vary spatially.
 To generate this model, it is assumed that the weights of the basis functions $a_i$ themselves vary spatially, i.e. $K(u,v;x,y) = \sum_i a_i(x,y) K_i(u,v)$.
-In general, there is also a differential background map between the two images $b(x,y)$ that may be fit for using a low--order polynomial.
+In general, there is also a differential background map between the two images $b(x,y)$ that may be fit for using a low--order function.
 The final image difference is then calculated through $D(x,y) = S(x,y) - T(x,y) \otimes K(u,v;x,y) - b(x,y)$.
 
 It is important to note that the choice of basis functions $K_i(u,v)$ is a degree of freedom in this problem.
 Many implementations \citep{Alard98,Alard00} use a set of 3 Gaussians, each with a different width $\sigma_n$, and each modified by a Laguerre polynomial to a given order.
-Subsequent studies \citep[e.g.][]{2007AN....328...16I} have suggested that a constant ratio be maintained between the different Gaussian widths, such that $\sigma_{n+1} = \beta \times \sigma_{n}$.
+Other basis functions are indeed possible, including the most flexible option of having each pixel in the kernel be a separate basis \citep{bramich,becker}.
+For the sum--of--Gaussian basis, \cite{2007AN....328...16I} have suggested that a constant ratio be maintained between the different Gaussian widths, such that $\sigma_{n+1} = \beta \times \sigma_{n}$.
 We adopted the value $\beta = 2.0$ for this work.
-We set the overall scale for these widths by noting that, under the assumption that the PSFs of the images are themselves Gaussian ($\sigma_S$ for the science image and $\sigma_T$ for the template image), the width of the matching kernel $\sigma_K$ should be simply $\sigma_K^2 = \sigma_S^2 - \sigma_T^2$.
-We used this width for the central Gaussian in a 3--component basis, with the smaller and larger Gaussians a factor of $1/\beta$ and $\beta$ different, respectively.
+We set the overall scale for these widths by noting that, under the assumption that the PSFs of the images are themselves Gaussian ($\sigma_S$ for the science image and $\sigma_T$ for the template image), the width of a pure--Gaussian matching kernel $\sigma_K$ should be simply $\sigma_K^2 = \sigma_S^2 - \sigma_T^2$.
+We used this $\sigma_K$ for the central Gaussian in a 3--component basis, with the smaller and larger Gaussians a factor of $1/\beta$ and $\beta$ different, respectively.
 
-Detection on a difference image occurs after correlation of $D(x,y)$ with the science image's PSF, yielding a detection image $D'(x,y) = D(x,y) \circ PSF_S(u,v;x,y)$, where the $\circ$ operator denotes correlation.
+Point--source detection on a difference image occurs after correlation of $D(x,y)$ with the science image's PSF, yielding a detection image $D'(x,y) = D(x,y) \circ PSF_S(u,v;x,y)$, where the $\circ$ operator denotes correlation.
 The values of the pixels in $D'(x,y)$ provide a maximum--likelihood estimate of there being a point source at that position.
 Detection occurs by searching for single pixels in $D'(x,y)$ that are more than $N$ times the square root of the per--pixel background variance.
 The value of $N$ defines the detection threshold, and is also a degree of freedom in the problem, chosen to minimize the number of statistical fluctuations while maximizing the sensitivity for true sources of variability.
@@ -137,7 +138,7 @@ D_{Pre}(x,y)  & = & S(x,y) \circ PSF_S(u,v;x,y) - \nonumber \\
 D'_{Pre}(x,y) & = & D_{Pre}(x,y). \nonumber
 \end{eqnarray}
 In this case, both detection and measurement happen on the same image.
-For model--based measurements, the model will have to be smoothed with the image PSF before being compared to the pixels.
+For model--based measurements, the models will have to be smoothed with the image PSF before being compared to the pixels in $D'(x,y)$.
 
 We note that since convolution commutes, ideally $K_{Pre} = K_{Post} \circ PSF_S$.
 However, by pre--filtering the image that we are matching the template to, we increase the effective point--source profile width by a factor of $\sqrt{2}$.
@@ -153,7 +154,7 @@ Second, this allows for a deeper template image to be built from more input data
 \section{Input Data}
 
 In order to test the efficacy of these two approaches, we generated simulated images using the LSST PhoSim package v3.2.5 \citep{phosim}.
-These images are high--fidelity simulations of the end--to--end LSST system, including effects from the atmosphere, optics, and detectors.
+These images are high--fidelity simulations of the end--to--end LSST system, including effects from the atmosphere, telescope optics, and photon detectors.
 In order to establish an algorithmic baseline for the image subtraction code, we turned off certain confounding elements of the simulations, including airglow variations, cloud screens, tracking variations, quantum efficiency variations, diffraction, saturation, and blooming.
 An input stellar catalog was generated to seed the simulations that included a random field with $\sim 1000$ stars for each 4000x4072 pixel LSST sensor, and a flat $r$-band magnitude range of $19<r<21$.
 All stars in the sample had identical spectral energy distributions to avoid chromatic effects.
@@ -173,12 +174,12 @@ All observations were simulated at the zenith, and all images were simulated in 
 Sky backgrounds in the resulting images were at the level of $\sim 150$ counts per pixel.
 Nine sensors of the central LSST raft were simulated in each run, and the template visit PSF--matched and subtracted from each visit's CCDs, using both the post--filtering and pre--filtering pipeline.
 
-A given image consists of three different layers, or planes, that track different bits of information.
+A given image consists of three different layers, or planes, that track different units of information.
 The first plane contains the science pixels, which is the layer on which detection and measurement algorithms operate.
 The second plane consists of a pixel--wise bitmask, indicating the quality of each pixel (was it saturated, or a detector defect) as well as detection information (was this pixel part of a source).
 The third plane contains the pixel--wise variance, which is tracked through all additive, multiplicative, and integral transform operations.
-The ``empirical'' variance of an image is estimated by taking all of the unmasked pixels and calculating their interquartile range, scaling by 0.741 (appropriate for a Gaussian distribution) and squaring the result.
-The ``propagated'' variance of an image is estimated by taking all of the unmasked variance pixels, and calculating their mean or median.
+The ``empirical'' variance of an image is estimated by taking all of the unmasked image--plane pixels and calculating their interquartile range, scaling by 0.741 (appropriate for a Gaussian distribution) and squaring the result.
+The ``propagated'' variance of an image is estimated by taking all of the unmasked variance--plane pixels, and calculating their mean or median.
 
 \section{Optimizing the Algorithm}
 
@@ -191,14 +192,14 @@ For all pixel--level resampling operations, we chose to always operate on the te
 At the start of processing, there are a pair of template and science images that are to be astrometrically and photometrically registered.
 The process of astrometric registration refers to the exact alignment of the two images in pixel space, while photometric alignment refers to matching of the PSF shape, sky backgrounds, and zero--point.
 From the input source catalog we choose 80\% of the stars to use in the registration process, with the remaining 20\% of the objects serving as a control sample to assess the effectiveness of $K(u,v;x,y)$ to subtract objects that were {\it not} used in the modeling process.
-A direct image--to--image relative astrometric mapping was determined using the 80\% sample, and a sinc--based resampling kernel applied to the template image.
+A direct image--to--image relative astrometric mapping was determined using the 80\% sample, and a sinc--based resampling kernel applied to the template image to align it with the science image at the pixel level.
 The resulting warped image was used as the image subtraction template $T(x,y)$.
 The science image $S(x,y)$ and $T(x,y)$ were sent to the image subtraction task, whose purpose is to fit for $K(u,v;x,y)$ and to produce the difference image $D(x,y)$.
 
 The first step in this process was to use the image PSF widths to define the {\it sizes} of the Gaussians' shapes in $K_i(u,v)$.
 It is important to note that these widths are not fit parameters that are optimized under Equation~\ref{eq-soln}, and must be chosen by the user beforehand.
 When $\sigma_S > \sigma_T$, a three--Gaussian basis was chosen, with the central Gaussian width being $\sqrt{\sigma_S^2 - \sigma_T^2}$, and smaller and larger Gaussians that were scaled in width by a factor of $\beta = 2$.
-The degree of the modifying Laguerre polynomials were set using the mean--squared--error analysis below, with the smallest Gaussian typically modified by a degree 4--6 polynomial, and the larger Gaussians modified to lower order.
+The degree of the modifying Laguerre polynomials were set using the mean--squared--error analysis described below, with the smallest Gaussian typically modified by a degree 4--6 polynomial, and the larger Gaussians modified to lower order.
 %We modified each of the Gaussians by a set of Laguerre polynomials of a given order.
 %The smallest Gaussian was modified to the specified order, with the others modified by floor(order/2).
 The total number of basis shapes in a given set is $\sum_{n=1}^{3} ({\rm degree}_n+1)\times({\rm degree}_n+2)/2$.
@@ -206,7 +207,7 @@ The total number of basis shapes in a given set is $\sum_{n=1}^{3} ({\rm degree}
 When $\sigma_T > \sigma_S$, we followed the prescription from \cite{0266-5611-26-8-085002} to choose basis widths, with the number of Gaussians fixed to three, and their Laguerre degree also fixed to three.
 The widths of the Gaussians are determined through the algorithm specified in \cite{0266-5611-26-8-085002} Equation~40, using as inputs the sequence of Gaussians that we would have used to match a Gaussian of width $\sigma_S$ to $\sigma_T$ (i.e. as if we would have convolved the science image and not the template image).
 
-The dimensions of the PSF matching kernel were chosen to be 6 times the largest Gaussian width, with a minimum kernel size of 21x21 pixels.
+The dimensions of the PSF matching kernel were chosen to be 6 times the largest Gaussian sigma, with a minimum kernel size of 21x21 pixels.
 For kernels that are significantly smaller than this, the Gaussians have significant (non--zero) power at the kernel boundaries, leading to square systematic artifacts at the scale of the kernel in the difference images.
 
 For each source indexed by $j$, we create substamps from each image $T_j(x,y)$ and $S_j(x,y)$ centered on that source.
@@ -222,25 +223,25 @@ We measured the mean sigma, the RMS of this distribution, the $\chi^2$ of these 
 These are referred to as the {\tt LOCAL} kernel metrics, and reflect how appropriate the chosen kernel basis is.
 
 The ensemble of sources was then used to constrain a spatial model of the kernel $K(u,v;x,y)$.
-For the spatial kernel model, we assumed that each of the kernel coefficients $a_i$ may be represented by a $N^{th}$ order 2--dimensional Chebyshev polynomial.
+For the spatial kernel model, we assumed that each of the kernel coefficients $a_i(x,y)$ may be represented by a $N^{th}$ order 2--dimensional Chebyshev polynomial.
 Having generated the full spatial solution $K(u,v;x,y) = \sum_i a_i(x,y) K_i(u,v)$, we evaluated the spatial kernel solution at the position of each source, created a new difference image using this kernel, and recalculated the metrics defined above.
 These are referred to as the {\tt SPATIAL} kernel metrics.
 Importantly, we also interpolated this solution to the positions of the control sample, which were explicitly {\it not} used in the spatial fit, and evaluated these same metrics.
 
-The differences between the {\tt LOCAL} and {\tt SPATIAL} metrics for the training sample, as well as the values of the {\tt SPATIAL} metrics for the control sample, reflect the appropriateness of the spatial model and our ability to interpolate and extrapolate to the full extent of the images.
+The differences between the {\tt LOCAL} and {\tt SPATIAL} metrics for the training sample, as well as the values of the {\tt SPATIAL} metrics for the control sample, reflect the appropriateness of the spatial model and our ability to interpolate and extrapolate it to arbitrary regions of the image.
 We used the mean square error (MSE) of the control sample to examine the tradeoff between bias and variance in the spatial interpolation.
 We define the bias as $\left| data - model \right|$, the variance as $(data - model)^2$, with the MSE as {\tt bias$^2$ + variance}.  
 In this context, the bias is the mean of the difference image, and the variance is the mean square of the difference image.
-We found that N = 5 or 6 was sufficient to minimize the control sample MSE, or maximize the predictive power of the spatial model without overfitting.
+We found that N = 5 or 6 was sufficient to minimize the control sample MSE, or to maximize the predictive power of the spatial model without overfitting.
 
-Figure~\ref{fig:1} presents four sets of common image subtraction failure modes, and associated choices in pipeline configuration that may cause them.
+Figure~\ref{fig:1} presents four sets of common image subtraction failure modes we encountered, and associated choices in pipeline configuration that may cause them.
 
 \begin{figure*}[!ht]
   \includegraphics[width=0.5\textwidth, height=0.25\textwidth]{fig1a_crop.eps}
   \includegraphics[width=0.5\textwidth, height=0.25\textwidth]{fig1b_crop.eps} \\
   \includegraphics[width=0.5\textwidth, height=0.25\textwidth]{fig1c_crop.eps}
   \includegraphics[width=0.5\textwidth, height=0.25\textwidth]{fig1d_crop.eps} \\
-\caption{Four example panels showing failure modes of the image subtraction software.
+\caption{Four panels showing example failure modes of the image subtraction software.
   Each panel shows a pair of difference images; 
   in the {\it left} subpanel is the residual from the {\tt LOCAL} fitting, and in the {\it right} the residual from the {\tt SPATIAL} fitting.
   Starting in the upper left and proceeding clockwise, the first panel shows the residuals when deconvolving the template image; 
@@ -261,10 +262,11 @@ Figure~\ref{fig:1} presents four sets of common image subtraction failure modes,
 \subsection{Source Detection}
 
 We next describe the process of source detection on the full difference images.
-In post--filtering, we convolved the difference image with its PSF (by design, the same as the PSF of the science image) before detection.
+When post--filtering, we convolved the difference image with its PSF (by design, the same as the PSF of the science image) before detection.
 In the case of pre--filtering, we detected on the difference image directly.
-We looked for both positive and negative--polarity pixels more than $N$ sigma above the background, and performed the detection step at multiple significance thresholds to understand the numbers of false detections at each significance level.
-These detections were merged together (e.g. to join the positive and negative lobes of a dipole) using a grow radius of 2 pixels.
+We looked for both positive and negative--polarity pixels more than $N$ sigma above the background, which were merged together (e.g. to join the positive and negative lobes of a dipole) using a grow radius of 2 pixels.
+We performed the detection step at multiple significance thresholds to understand the numbers of false detections at each significance level.
+
 
 %Since the fundamental image operations are the same, the images immediately preceding the detection step ($D'$) should have been {\it exactly} the same.
 %As we will demonstrate in Section~\ref{sec-uh}, this was not exactly the case.
@@ -312,7 +314,7 @@ We used this association to help assess if the diaSource was a source--associate
 
 \section{False Detection Rate}
 
-To assess the ``quality'' of each implementation of the algorithm, we use as a metric the number of false positive--going and negative--going sources that are detected and measured in each difference image.
+To assess the ``quality'' of each implementation of the algorithm, we use as a metric the number of positive--going and negative--going sources that are detected and measured in each difference image.
 We discuss below our realized false detection rate, both in comparison to the theoretical statistical floor, and in intercomparison between the post and pre--filtering techniques.
 
 \subsection{Theoretical \label{sec-analyticfp}}
@@ -329,6 +331,7 @@ N_{total}(>\nu) = n(>\nu)*nrow*ncol/ \sigma_g^2
 \label{eq-theorytot}
 \end{equation}
 where $nrow$ and $ncol$ are the number of image rows and columns.
+{\bf UH, WHAT ABOUT $\pi$ FOR THE AREA}.
 In difference image analysis, we expect twice this number, since we are searching for both positive and negative--going fluctuations.
 
 %To test our measurement suite, we created an empty sky--only simulated image, and recorded the number of detections in this image as a function of threshold.
@@ -362,7 +365,7 @@ We next performed a detailed analysis of the false detection rate using our simu
 We report here the results for each of the 3 visits, and for pre-- and post--filtering for detection, using our optimal pipeline configurations.
 We used measurement flags to remove spurious detections on the immediate border of the image; other than that we did no other cuts other than requiring that the centroid measurement was finite, which would be a realistic requirement for any real--time alert system reporting on these objects.
 We separated the diaSources that match with the reference catalog (using a 3'' matching radius) from those that don't (referred to as ``orphans'') to investigate the origins of the detections.
-We found no significant correlation of false detections rate with sensor within the raft; therefore we report the aggregate results for all 9 sensors in the analyses that follow.
+We found no significant correlation of false detection rate with sensor within the raft; therefore we report the aggregate results for all 9 sensors in the analyses that follow.
 
 \begin{table*}[t]
 \centering
@@ -389,7 +392,7 @@ Visit   & Filtering & N$_{Expect}$ & N$_{Measured}$ &  N$_{Orphan}$ & N$_{Match}
 The numbers N$_{Measured}$ of false detections in each case are given in Table~\ref{tab-bestfp10}, with the total number expected from the Monte Carlo analysis given as N$_{Expect}$.
 We undertook a manual inspection of all difference images to associate the diaSources with sources in the images, ultimately using a 3'' association with the input source catalog to formally distinguish ``matches'' from ``orphans''.
 Associations are listed in the N$_{Match}$ column of Table~\ref{tab-bestfp10}, with the unmatched false detections in the N$_{Orphan}$ column.
-The former are likely to come from systematics in the subtractions of stars, while the latter would be due to fluctuations in the background.
+The former are likely to come from systematics in the subtractions of stars, while the latter would be due to statistical fluctuations in the background.
 We note two effects that impact N$_{Match}$.
 The first is that, with a 3'' matching radius and our source densities, 4\% of random fluctuations will by--chance associate with a source.
 Assuming that N$_{Orphan}$ represents 96\% of the background fluctuation population, we estimate the number of fluctuations from that same population that would have associated with sources as N$_{Random}$.
@@ -405,9 +408,9 @@ This included an investigation of the sky subtraction in the images, how the ima
 
 The ratio of negative to positive diaSources is significantly higher than 1.0 for all pre--filtering visits.
 We examine modeling of the sky background as a potential source for this systematic.
-The top panel of Figure~\ref{fig:2} shows contours of positive to negative false detections, overlayed on an over or under--subtraction vs. detection threshold plot.
+The top panel of Figure~\ref{fig:2} shows contours of positive to negative false detection ratios, overlayed on an over or under--subtraction vs. detection threshold plot.
 We find that, at a 5--sigma detection treshold, a 1.5\% sky misestimate can bias the ratio of positive to negative sources by a factor of 2.
-The bottom panel shows contours of the {\it total} numbers of false detections, positive plus negative, and we see that this value is relatively insensitive to the sky model.
+The bottom panel shows contours of the {\it total} numbers of false detections, positive plus negative, and we see that this value is relatively insensitive to fitting of the sky model.
 As more detections of one polarity are found, fewer of the other are found, although the bias is to slowly increase the total numbers of false detections.
 The observed negative--to--positive ratios of 2--3 suggest that there is a background oversubtraction of order $1-2\%$, causing low--sigma negative--going fluctuations to be measured at 5--sigma below the expected sky value of zero (Figure~\ref{fig:2}).
 \begin{figure*}[!ht]
@@ -415,8 +418,8 @@ The observed negative--to--positive ratios of 2--3 suggest that there is a backg
 \centering{\includegraphics[width=1.0\textwidth]{fig2.eps}}
 \caption{
 Misestimation of the sky background value has an effect on both the number of false detections, and relative abundance of positive to negative false detections.
-The top pane of this figure shows the relative number of +ve/-ve (-ve/+ve) detections if the sky background is under (over) subtracted at a particular fractional level.
-The  bottom panel shows how the total number of false detections changes for the same misestimation.
+The top pane of this figure shows the multiplicative change in relative number of +ve/-ve (-ve/+ve) detections if the sky background is under (over) subtracted, as a function of detection threshold.
+The bottom panel shows how the total number of false detections changes for the same misestimation.
 This is not a strong function of the seeing; these numbers are appropriate for the 0.6'' simulation presented here.
 }
 \label{fig:2}
@@ -434,7 +437,7 @@ A 1\% under-estimate of the noise typically results in 2 fewer false detections 
   \includegraphics[width=0.33\textwidth]{fig3a.eps}
   \includegraphics[width=0.33\textwidth]{fig3b.eps}
   \includegraphics[width=0.33\textwidth]{fig3c.eps} \\
-  \caption[]{ We plot here the expected change in the total number of false detections as a function of detection threshold and noise misestimate.
+  \caption[]{ We plot here the expected additive change in the total number of false detections as a function of detection threshold and noise misestimate.
     The panels are for three values of image seeing, left--to--right 0.6'', 0.88'', and 1.2''.
     In each panel the top pane shows the rate increase when the noise is under--estimated, and the bottom shows the rate decrease when the noise is over--estimated.
     In all cases the counts are for the total number of false detections in a single 4000x4072--pixel random Gaussian field.
@@ -457,8 +460,8 @@ The former represents the empirical variance, while the latter the propagated va
 We investigate their ratio (empirical/propagated) at 2 stages in the processing: after creation of the difference image (image $D$), and immediately preceding detection (image $D'$; recall that for pre--filtering, $D = D'$).
 These results are summarized in Table~\ref{tab-variance1}.
 For pre--filtering, we find that the variance plane typically underestimates the true variance by $1\%$ for all visits.
-When using post--filtering, the deconvolution {\tt Visit 1} yields a similar underestimate in the difference image, but for the other two visits the variance is tracked to better than 1\%, with a small RMS.
-However, when post--filtering with the PSF, the variance becomes {\it overestimated} by nearly a factor of two for deconvolution {\tt Visit 1}, and {\it underestimated} by $4-5\%$ for the other visits.
+When using post--filtering, the deconvolution {\tt Visit 1} yields a similar underestimate in the difference image $D$, but for the other two visits the variance is tracked to better than 1\%, with a small RMS.
+However, when post--filtering with the PSF to generate $D'$, the variance becomes {\it overestimated} by nearly a factor of two for deconvolution {\tt Visit 1}, and {\it underestimated} by $4-5\%$ for the other visits.
 This will yield a smaller number of statistical false detections during deconvolution, and a larger number of false detections during convolutions.
 Looking at this in terms of sensitivity to true variability, this effect will lower the sensitivity to true transients during deconvolution, and heighten the sensitivity during convolutions.
 The challenge in the latter case will be in distinguishing the true from systematic variability in the images.
@@ -475,7 +478,7 @@ v6866601 &$1.012 \pm 0.002$&$1.018 \pm 0.005$&$0.599 \pm 0.017$ \\
 v6866602 &$1.010 \pm 0.002$&$1.007 \pm 0.001$&$1.046 \pm 0.002$ \\
 v6866603 &$1.015 \pm 0.003$&$1.008 \pm 0.001$&$1.045 \pm 0.003$ \\
 \end{tabular}
-\caption{{\rm Ratio of the empirical variance in the difference images, calculated using the square of (0.741 times the interquartile range), to the median of the variance plane.
+\caption{{\rm This intra--image comparison gives the ratio of the empirical variance in the image--plane pixels to the median of the variance--plane pixels.
   In all cases (except the deconvolution configuration) the variance plane represents an {\it underestimate} of the true variance in the images.
   We report the mean and RMS across all sensors.
 \label{tab-variance1}}}
@@ -484,9 +487,9 @@ v6866603 &$1.015 \pm 0.003$&$1.008 \pm 0.001$&$1.045 \pm 0.003$ \\
 \subsubsection{Investigating the Asymmetry Between Pre and Post--Filtering}
 
 We next investigated the variance properties of the images that are input to the detection stage, i.e. the difference image itself in the case of pre--filtering, and the difference image convolved with its PSF in post--filtering.
-In this comparison we look at the empirical variance of the pre--filtered image compared to that of the post--filtered image, and similarly compare the propogated variance.
+In this comparison we looked at the empirical variance of the pre--filtered image compared to that of the post--filtered image, and similarly compared the propogated variance.
 These results are summarized in Table~\ref{tab-variance2}.
-We find that the image pixels have very similar empirical noise properties at the detection stage, with the deconvolution visit having larger variance by $1\%$ but the other visits having essentially equal noise properties, with a bias towards the post--filtered data having slightly higher variance\footnote{For completeness, we note the median differences between the image planes at the time of detection are 3--4 counts (or 0.2 sigma relative to the empirical variance) for v6866601, 0.2 counts (0.02 sigma) for v6866602, and less than 0.1 counts (0.01 sigma) for v6866603.}.
+We found that the image pixels have very similar empirical noise properties at the detection stage, with the deconvolution visit having larger variance by $1\%$ but the other visits having essentially equal noise properties, with a bias towards the post--filtered data having slightly higher variance\footnote{For completeness, we note the median differences between the image planes at the time of detection are 3--4 counts (or 0.2 sigma relative to the empirical variance) for v6866601, 0.2 counts (0.02 sigma) for v6866602, and less than 0.1 counts (0.01 sigma) for v6866603.}.
 The medians of the propogated variance pixels tell a different story.
 For the deconvolution visit, the median per--pixel variance is $70\%$ higher in post--filtering.
 This enhancement of the noise properties provides a clear preference for pre--filtering when post--filtering would result in deconvolution.
@@ -496,7 +499,7 @@ This will increase the sensitivity of the post--filtered data to false detection
 This analysis demonstrates that this is primarily due to an {\it underestimate} of the per--pixel variance in the post--filter processing: while the pre--filtered variance is a 1\% underestimate, the post--filtered variance is a 5\% underestimate.
 As outlined by \cite{Price-Stacking}, this is likely due, at least in part, to a loss of pixel covariance when undergoing multiple convolutions, as covariance is not currently tracked in the LSST software used here.
 In pre--filtering, the science image undergoes a single convolution, and the template image a pixel resamping and single convolution.
-In post--filtering, the template image undergoes a pixel resampling and convolution, is subtracted from the science image, and then undergoes a second convolution with the PSF for detection.
+In post--filtering, the template image information undergoes a pixel resampling and convolution, is subtracted from the science image, and then effectively undergoes a second convolution with the PSF for detection.
 As we have demonstrated here, this second convolution is where our variance bookkeeping lags the empirical variance.
 
 \begin{table*}[t]
@@ -511,9 +514,9 @@ v6866601 & $1.011 \pm 0.016$    & $1.710 \pm 0.049$    \\
 v6866602 & $1.001 \pm 0.001$    & $0.967 \pm 0.001$    \\
 v6866603 & $1.002 \pm 0.001$    & $0.974 \pm 0.002$    \\
 \end{tabular}
-\caption{{\rm Ratios of the variance planes immediately before detection $D'$.
+\caption{{\rm This inter--image comparison shows the ratios of the variance planes at the detection stage (i.e. in image $D'$).
   Ratios are in the sense of the variance of the post--filtered image divided by the variance of the pre--filtered image.
-  The first column represents the ratios of the empirical variance.
+  The first column represents the ratios of the empirical variance, as derived from the image--plane pixels.
   The second column reports the ratios of the medians of the propagated variance planes.
   We report the mean and RMS across all sensors.
 \label{tab-variance2}}}
@@ -529,6 +532,7 @@ From left to right the panels are for {\tt Visit 1} (0.6$^{\prime\prime}$ FWHM),
 We show the theoretical run of false detections vs. threshold in black, with a 1--sigma envelope coming from Monte Carlo simulations (Section~\ref{sec-analyticfp}).
 The red squares show the empirical rates coming from the classical post--filtering analsis, while the blue circles are for the pre--filtering technique.
 It is noteworthy that the deconvolution configuration shows an enhanced number of false detections at high significance.
+
 Since our analysis shows that we should be {\it less} sensitive to statistical fluctuations under deconvolution, these should most prominently be coming from systematic mis--subtraction of source in the image.
 These features typically appear as ringing in the images around bright sources, which trigger the detection algorithm.
 As seen in Table~\ref{tab-bestfp10}, there are indeed an enhanced number of false detections that match to an image source (92 out of 143).
@@ -547,9 +551,11 @@ and fit for $k$ {\bf HOW}.
 
 The bottom panel of Figure~\ref{fig:4} shows the results of this correction, using $k = 0.975, 0.985 $~and~$ 0.99$ for {\tt Visit 1}, {\tt Visit 2}, and {\tt Visit 3}, respectively.
 These results suggest our variance estimates are too {\it high}, and we are therefore detecting too {\it few} false detections.
+{\bf BTW WHICH INFO DID WE USE FOR DETECTION?}
+
 {\bf This is consistent with the interpretation that the disagreement between the empirical variance of the image planes and propagated variance planes is due to missing information in the image planes.
-That is, the ratio of empirical / propagated being larger than 1.0 is not because the propagate variance is too low, but that the empirical variance is too high.
-That does not entirely make sense, because the pixels are correlated (smoothed).}
+That is, the ratio of empirical / propagated being larger than 1.0 is not because the propagated variance is too low, but that the empirical variance is too high.
+UH That does not entirely make sense, because the pixels are correlated (smoothed).}
 %This does not agree entirely with the analysis of the empirical variance, Section~\ref{sec-varmis} and Table~\ref{tab-variance1}, which suggest that our variance planes {\it underestimate} the true variance.
 This makes clear that to operate near the theoretical floor in terms of false detection rate, it is imperative to track the variance in data at the 1\% level or better to optimize both the false detection rate, and the true detection efficiency.
 \begin{figure*}[!ht]
@@ -587,10 +593,10 @@ This makes clear that to operate near the theoretical floor in terms of false de
 %This is shown in the bottom panel for Figure \ref{fig:2}.
 
 In this analysis we examined several potential sources of false detections in subtracted images.
-The first is due to misestimation of the variance in the images, which results in an enhanced (or deficient) rate of statistical fluctuations masquerading as variable sources.
-Due to the steepness of the false detection rate with detection threshold, the variance in an image must be understood at the 1\% level or better to yield a clean set of diaSources.
-The second is due to over or under--subtraction of the sky background, which will bias the ratio of positive to negative--going statistical fluctuations that are detected as sources.
+The first is due to over or under--subtraction of the sky background, which will bias the ratio of positive to negative--going statistical fluctuations that are detected as sources.
 However, the overall rate false detections has a shallow dependence on this function.
+The second is due to misestimation of the variance in the images, which results in an enhanced (or deficient) rate of statistical fluctuations masquerading as variable sources.
+Because of the steepness of the false detection rate with detection threshold, the variance in an image must be understood at the 1\% level or better to yield a clean set of diaSources.
 Since these two effects are somewhat orthogonal, the total numbers of orphan false detections (not associated with image sources) and the ratio of positive--going to negative--going orphans provides a joint constraint on the accuracy of the image variance calculations and of the background subtraction, respectively.
 Finally, the process of deconvolution is shown to produce a decreased sensitivity to statistical fluctuations, due to enhancement of high frequency noise.
 However, the artifacts of deconvolution around sources are themselves detected as an enhanced rate of systematic false detections, making this a worst--case treatment.
@@ -599,9 +605,9 @@ The pre--filtering of the science images by their PSF before template PSF--match
 In this regard, the process provides a clear advantage over the standard post--filtering technique.
 In addition, the pre--filtering image variance in the source detection stage is consistently within 1\% of the empirical image noise, which is not the case for post--filtering.
 However, a downside to this technique is that source measurement must also happen on this filtered image.
-Because the image has been smoothed, higher order moments such as shapes will be smoothed.
+Because the image has been smoothed, higher order moments such as shapes will also be smoothed.
 Model--based shape measurements will have to themselves be smoothed by the PSF before comparing to the image pixels, necessitating a modified source measurement suite.
-A potential but computationally expensive approach would be to create both pre--filtered and post--filtered difference images, and perform source detection on the pre--filtered image and source measurement on the post--filtered image.
+A potential but computationally--expensive approach would be to create both pre--filtered and post--filtered difference images, and perform source detection on the pre--filtered image and source measurement on the post--filtered image.
 
 We summarize the salient points of the analysis below:
 
@@ -621,17 +627,17 @@ We summarize the salient points of the analysis below:
 
 \item When strongly deconvolving, the post--filtered variance is 70\% {\it higher} at the time of detection compared to the pre--filtered data (Table~\ref{tab-variance2}).
   This is consistent with the understanding that deconvolution increases high frequency noise in the images, and yields a {\it lowered} detection efficiency for true variability in deconvolved data.
-  Systematic ringing features around sources also yield an enhanced rate of systematic false detections in deconvolved images.
+  Systematic ringing features around sources also yield an enhanced rate of systematic false detections in deconvolved images, such that the total number of false detections will increase in most stellar fields.
   For this reason, pre--filtering is clearly preferred to post--filtering in the case of significant deconvolution.
 
 %\item For non--deconvolved image subtraction, pre--filtering performs as well as post--filtering in terms of the number of false detections, when corrected for variance underestimate (Figure~\ref{fig:4}).
 
 \item An empirical computation of the variance from the image plane, compared to the median propagated variance in the variance plane, indicates that the software consistently underestimate the variance in pre--filtering by $1-2\%$, and in post--filtering by $4-5\%$ (when not strongly deconvolving; Table~\ref{tab-variance1}).
   The post--filtering discrepancy is shown to arise from the PSF--filtering of the difference image immediately before detection.
-  This is likely due, at least in part, to the double--convolution that is happening to the template image, and the lack of covariance tracking within the software.
+  This is likely due, at least in part, to the double--convolution that is happening to the template image information, and the lack of covariance tracking within the software.
 
-\item The ratios of the empirical variance of the detection images between pre--filtering and post--filtering are similar to within $1\%$ (Table~\ref{tab-variance2}).
-  However, the propagated variance in the post--filtered data is $3-4\%$ {\it lower} in the post--filtered data, leading to a larger number of false detections when using the variance plane as the definition of sigma (Table~\ref{tab-bestfp10}).
+\item The ratios of the {\it empirical} variance of the detection images between pre--filtering and post--filtering are similar to within $1\%$ (Table~\ref{tab-variance2}).
+  However, the {\it propagated} variance in the post--filtered data is $3-4\%$ lower, leading to a larger number of false detections when using the variance plane as the definition of sigma (Table~\ref{tab-bestfp10}).
 
 
 %%%
@@ -644,7 +650,7 @@ We summarize the salient points of the analysis below:
 
 \item However, the ratio of positive to negative--going false detections is strongly dependent on background fitting, with a 1\% error in the background causing 50\% more false detections of one polarity over another (Figure~\ref{fig:2}).
 
-\item Our empirical negative to positive false detection ratio is 2--3 for pre--filtering, indicating a bias in the background levels of 1--2\%.
+\item Our empirical negative--to--positive false detection ratio is 2--3 for pre--filtering, indicating an over--subtraction bias in the background levels of 1--2\%.
   Similar ratios are seen in post--filtering, although they vary from over-- to under--subtraction of the background (Table~\ref{tab-bestfp10}).
 
 %%%
@@ -653,7 +659,7 @@ We summarize the salient points of the analysis below:
 
 \item The measured false detection rate is seen to scale with detection threshold in a manner consistent with theory (Figure~\ref{fig:4}).
   A 1--parameter correction to the effective detection threshold by 1--2.5\% brings these relationships into almost exact correspondence.
-  Accordingly, optimization of the false detection vs. true source detection efficiency will require an empirical understanding of the variance at the 1\% level.
+  Accordingly, optimization of the false detection vs. true source detection efficiency will require a calibration of the variance at the 1\% level.
 
 \end{itemize}
 
