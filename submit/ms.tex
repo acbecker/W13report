@@ -64,31 +64,32 @@ Significant investments in software and algorithms are the only way to meet thes
 For this reason, the Large Synoptic Survey Telescope (LSST), which was approved for construction in the Fall of 2014, has had an active Data Management group working continuously since 2004 to refine exiting algorithms and to develop new ones, to meet the challenge of engineering first light in 2020.
 We report here on one of these software development projects: the study of image subtraction software for the detection of variability in astronomical images.
 
-The detection of transient objects or known--object variability in uncrowded fields may be undertaken at the catalog level \cite{drake}.
+The detection of transient objects or known--object variability in uncrowded fields may be undertaken at the catalog level \cite[e.g.]{}{2009ApJ...696..870D}.
 However, when searching for variability in regions where there is significant confusion, catalog--based methods become heavily dependent on how objects are deblended, which itself is typically a function of the image resolution (or seeing).
 For this reason, image subtraction techniques have been developed that perform the subtraction of a prior imaging epoch from a newly acquired one, subtracting out all static sources and only leaving signatures of objects that have changed in position or brightness in a ``difference image''.
-By reducing the number of objects to measure, these variable sources may be uniquely photometered without significant deblending issues \citep[however, crowded difference images with spatially overlapping variable sources are possible, e.g.][]{m31}.
-This technique is highly advantageous for the study of variability in the Galactic bulge \citep[e.g. microlensing;][]{microlensing}, nearby galaxies \citep[e.g. nearby supernovae;][]{nearby-sne}, or for the study of nuclear variability in more distant galaxies \cite[e.g.][]{yumi}.
+By reducing the number of objects to measure, these variable sources may be uniquely photometered without significant deblending issues \citep[however, crowded difference images with spatially overlapping variable sources are possible, e.g.][]{1996ApJ...473L..87C}.
+This technique is highly advantageous for the study of variability in the Galactic bulge \citep[e.g. microlensing;][]{1999ApJ...521..602A}, nearby galaxies \citep[e.g. nearby supernovae;][]{2011Natur.480..344N}, or for the study of nuclear variability in more distant galaxies \cite[e.g.][]{2014ApJ...782...37C}.
 When used, image subtraction is typically applied to the entirety a time--domain dataset, in both sparse and crowded fields, so as to have a consistent treatment of all of the data.
 
 It is both an opportunity and a challenge that image subtraction reveals everything that has varied between two images, since that also includes the atmosphere, the telescope pointing, the temperature of the detectors, and the condition of the detectors themselves.
 This dependency makes it absolutely necessary to calibrate the science pixels, a requirement that becomes more stringent as data volumes become larger and rare effects become commonplace.
 Assuming that the instrumental effects are understood, the core challenge to image subtraction is to match the point--spread--functions (PSFs) of the two images being compared.
-There are multiple ways to perform PSF--matching, but techniques that operate in the spatial domain \citep{alard-lupton,alard} have largely been preferred over techniques that operate in the Fourier domain \citep{tomaney-crotts}.
+There are multiple ways to perform PSF--matching, but techniques that operate in the spatial domain \citep{1998ApJ...503..325A,2000A&AS..144..363A} have largely been preferred over techniques that operate in the Fourier domain \citep{1996AJ....112.2872T}.
 The application of algorithms to the images may also cause artificial systematic sources of variability, including misapplication of the image subtraction software itself.
 This is clearly a circumstance to be avoided, and the motivation behind this work.
 
-A key recognition of recent surveys is that systematic effects (i.e. non--astrophysical variability) dominate the population of objects found in difference images \citep{sdss2,panstarrs}.
-This has opened the door for the at--scale adoption of machine--learning (ML) techniques to separate the true transients from the false detections\footnote{In binary classification, sources of contamination are referred to as ``false positives''.  However, since ``positive'' also may refer to the polarity of a difference image detection, and we indeed accept both positive--going and negative--going detections as ``false positives'', we use the term ``false detections'' here to refer to these sources.}\citep{josh}.
-This work is encouraging, with the most recent ML suites having XXX completeness with YYY contamination \citep{ml}.
-However, for LSST this level of judgment must be improved, to meet the requirements of XXX and YYY for the nightly real--time alert stream \citep{srd}.
+A key recognition of recent surveys is that systematic effects (i.e. non--astrophysical variability) dominate the population of objects found in difference images \citep{2008AJ....135..348S,2013PASP..125..357D}.
+This has opened the door for the at--scale adoption of machine--learning (ML) techniques to separate the true transients from the false detections\footnote{In binary classification, sources of contamination are referred to as ``false positives''.  However, since ``positive'' also may refer to the polarity of a difference image detection, and we indeed accept both positive--going and negative--going detections as ``false positives'', we use the term ``false detections'' here to refer to these sources.}\citep{2012PASP..124.1175B,2015arXiv150105470W}.
+This work is encouraging, with recent single--band random--forest--based ML suites having 98--99\% classification efficiency at 95\% sample purity for specific classes of variability \citep{2011ApJ...733...10R}.
+However, overall misclassification rates across all sources are of order 10--20\%.
+For LSST this technology must be improved to include multi--band information \cite[e.g.][]{2015arXiv150101314K}, and meet the requirements of 90\% completeness and 95\% purity at the 6--sigma detection threshold, for the nightly real--time alert stream (per LSST Observatory System Specifications).
 A necessary step towards achieving this goal is to understand the sources of false detections in images, and to develop new techniques to avoid generating or reporting them.
 We describe such a novel algorithm here, which involves regularizing the PSF--matching operation by smoothing the science image with its own PSF.
 As we will demonstrate, this is not an arbitrary decision, but merely re--orders an operation that occurs naturally in the process of difference image source detection.
 By moving this operation earlier in the pipeline in a manner that commutes with the standard technique, we introduce no new pixel--level operations into the processing, while simultaneously reducing our sensitivity to systematic effects due to ``sharpening'', or deconvolution, during PSF--matching.
 
-% WHAT THE HELL IS THIS PAPER?!
-% Mention that one paper that talks about pre--filtering but not for this reason.
+%% Mention that one paper that talks about pre--filtering but not for this reason?
+%% \cite{2013arXiv1301.1413H}
 
 \section{PSF--Matching Algorithm}
 
@@ -114,8 +115,8 @@ In general, there is also a differential background map between the two images $
 The final image difference is then calculated through $D(x,y) = S(x,y) - T(x,y) \otimes K(u,v;x,y) - b(x,y)$.
 
 It is important to note that the choice of basis functions $K_i(u,v)$ is a degree of freedom in this problem.
-Many implementations \citep{Alard98,Alard00} use a set of 3 Gaussians, each with a different width $\sigma_n$, and each modified by a Laguerre polynomial to a given order.
-Other basis functions are indeed possible, including the most flexible option of having each pixel in the kernel be a separate basis \citep{bramich,becker}.
+Many implementations \citep{1998ApJ...503..325A,2000A&AS..144..363A} use a set of 3 Gaussians, each with a different width $\sigma_n$, and each modified by a Laguerre polynomial to a given order.
+Other basis functions are indeed possible, including the most flexible option of having each pixel in the kernel be a separate basis \citep{2008MNRAS.386L..77B,2009MNRAS.397.2099A,2012MNRAS.425.1341B}.
 For the sum--of--Gaussian basis, \cite{2007AN....328...16I} have suggested that a constant ratio be maintained between the different Gaussian widths, such that $\sigma_{n+1} = \beta \times \sigma_{n}$.
 We adopted the value $\beta = 2.0$ for this work.
 We set the overall scale for these widths by noting that, under the assumption that the PSFs of the images are themselves Gaussian ($\sigma_S$ for the science image and $\sigma_T$ for the template image), the width of a pure--Gaussian matching kernel $\sigma_K$ should be simply $\sigma_K^2 = \sigma_S^2 - \sigma_T^2$.
@@ -155,7 +156,7 @@ Second, this allows for a deeper template image to be built from more input data
 
 \section{Input Data}
 
-In order to test the efficacy of these two approaches, we generated simulated images using the LSST PhoSim package v3.2.5 \citep{phosim}.
+In order to test the efficacy of these two approaches, we generated simulated images using the LSST PhoSim package v3.2.5 \citep{2010SPIE.7738E..1OC}.
 These images are high--fidelity simulations of the end--to--end LSST system, including effects from the atmosphere, telescope optics, and photon detectors.
 In order to establish an algorithmic baseline for the image subtraction code, we turned off certain confounding elements of the simulations, including airglow variations, cloud screens, tracking variations, quantum efficiency variations, diffraction, saturation, and blooming.
 An input stellar catalog was generated to seed the simulations that included a random field with $\sim 1000$ stars for each 4000x4072 pixel LSST sensor, and a flat $r$-band magnitude range of $19<r<21$.
@@ -669,6 +670,6 @@ We summarize the salient points of the analysis below:
 LSST blurb here.
 
 \bibliographystyle{apj}
-\bibliography{refs}
+\bibliography{ms}
 
 \end{document}
