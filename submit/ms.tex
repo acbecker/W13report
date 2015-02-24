@@ -64,7 +64,7 @@ Significant investments in software and algorithms are the only way to meet thes
 For this reason, the Large Synoptic Survey Telescope (LSST), which was approved for construction in the Fall of 2014, has had an active Data Management group working continuously since 2004 to refine exiting algorithms and to develop new ones, to meet the challenge of engineering first light in 2020.
 We report here on one of these software development projects: the study of image subtraction software for the detection of variability in astronomical images.
 
-The detection of transient objects or known--object variability in uncrowded fields may be undertaken at the catalog level \cite[e.g.]{}{2009ApJ...696..870D}.
+The detection of transient objects or known--object variability in uncrowded fields may be undertaken at the catalog level \cite[e.g.][]{2009ApJ...696..870D}.
 However, when searching for variability in regions where there is significant confusion, catalog--based methods become heavily dependent on how objects are deblended, which itself is typically a function of the image resolution (or seeing).
 For this reason, image subtraction techniques have been developed that perform the subtraction of a prior imaging epoch from a newly acquired one, subtracting out all static sources and only leaving signatures of objects that have changed in position or brightness in a ``difference image''.
 By reducing the number of objects to measure, these variable sources may be uniquely photometered without significant deblending issues \citep[however, crowded difference images with spatially overlapping variable sources are possible, e.g.][]{1996ApJ...473L..87C}.
@@ -81,6 +81,7 @@ This is clearly a circumstance to be avoided, and the motivation behind this wor
 A key recognition of recent surveys is that systematic effects (i.e. non--astrophysical variability) dominate the population of objects found in difference images \citep{2008AJ....135..348S,2013PASP..125..357D}.
 This has opened the door for the at--scale adoption of machine--learning (ML) techniques to separate the true transients from the false detections\footnote{In binary classification, sources of contamination are referred to as ``false positives''.  However, since ``positive'' also may refer to the polarity of a difference image detection, and we indeed accept both positive--going and negative--going detections as ``false positives'', we use the term ``false detections'' here to refer to these sources.}\citep{2012PASP..124.1175B,2015arXiv150105470W}.
 This work is encouraging, with recent single--band random--forest--based ML suites having 98--99\% classification efficiency at 95\% sample purity for specific classes of variability \citep{2011ApJ...733...10R}.
+{\bf IS THIS REAL VS BOGUS?}
 However, overall misclassification rates across all sources are of order 10--20\%.
 For LSST this technology must be improved to include multi--band information \cite[e.g.][]{2015arXiv150101314K}, and meet the requirements of 90\% completeness and 95\% purity at the 6--sigma detection threshold, for the nightly real--time alert stream (per LSST Observatory System Specifications).
 A necessary step towards achieving this goal is to understand the sources of false detections in images, and to develop new techniques to avoid generating or reporting them.
@@ -517,7 +518,7 @@ v6866601 & $1.011 \pm 0.016$    & $1.710 \pm 0.049$    \\
 v6866602 & $1.001 \pm 0.001$    & $0.967 \pm 0.001$    \\
 v6866603 & $1.002 \pm 0.001$    & $0.974 \pm 0.002$    \\
 \end{tabular}
-\caption{{\rm This inter--image comparison shows the ratios of the variance planes at the detection stage (i.e. in image $D'$).
+\caption{{\rm This inter--image comparison shows the ratios of the variance planes between $D'_{post}$ and $D'_{pre}$ (i.e. at the detection stage).
   Ratios are in the sense of the variance of the post--filtered image divided by the variance of the pre--filtered image.
   The first column represents the ratios of the empirical variance, as derived from the image--plane pixels.
   The second column reports the ratios of the medians of the propagated variance planes.
