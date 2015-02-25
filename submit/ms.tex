@@ -326,16 +326,15 @@ We discuss below our realized false detection rate, both in comparison to the th
 To understand the nature of the base statistical false detection rate, we modeled source--free images (i.e.\ with a background described by a Gaussian process) using the statistics of Gaussian random fields \citep{Kaiser-PointSources}.
 For an image with Gaussian noise convolved with a Gaussian PSF with width $\sigma_g$, the density of peaks above a given detection threshold $\nu$ is given by
 \begin{equation}
-n(>\nu) = \frac{1}{2^{5/2}\pi^{3/2}} \nu e^{-\nu^2 /2}.
+n(>\nu) = \frac{1}{2^{5/2} \pi^{3/2} \sigma_g^2} \nu e^{-\nu^2 /2}.
 \label{eq-theory}
 \end{equation}
 To estimate the number of random positive detections for a given image we must normalize this density by the total number of realizations of the PSF within the image, i.e.,
 \begin{equation}
-N_{total}(>\nu) = n(>\nu)*nrow*ncol/ \sigma_g^2
+N_{total}(>\nu) = n(>\nu) * nrow * ncol
 \label{eq-theorytot}
 \end{equation}
 where $nrow$ and $ncol$ are the number of image rows and columns.
-{\bf UH, WHAT ABOUT $\pi$ FOR THE AREA}.
 In difference image analysis, we expect twice this number, since we are searching for both positive and negative--going fluctuations.
 
 %To test our measurement suite, we created an empty sky--only simulated image, and recorded the number of detections in this image as a function of threshold.
